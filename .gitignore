@@ -1,0 +1,35 @@
+# Ultraleap SDK binaries and headers must never be committed.
+# They are proprietary and licensed under the Ultraleap Enterprise Licence,
+# which does not permit redistribution outside of a packaged application.
+# The build references them in place from the local Ultraleap installation.
+*.dylib
+*.so
+*.lib
+*.dll
+LeapC.h
+Libraries/
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+*.xcuserdatad/
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Package.resolved
+
+# DocC output
+*.doccarchive
+
+# macOS
+.DS_Store
