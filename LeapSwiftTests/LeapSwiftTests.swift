@@ -135,6 +135,40 @@ struct HandFrameTests {
     }
 }
 
+// MARK: - Device Open Policy Tests
+
+@Suite("Device open policy")
+struct DeviceOpenPolicyTests {
+
+    // The service does not enumerate the device until after it emits its device
+    // event: polling right after `connected` reports zero devices, and the device
+    // only appears ~40 ms later alongside `deviceFound`. Opening on `connected`
+    // alone therefore always misses it.
+    @Test func opensOnDeviceFound() {
+        #expect(LeapController.shouldOpenDevice(for: .deviceFound(nil)))
+    }
+
+    @Test func opensOnConnected() {
+        #expect(LeapController.shouldOpenDevice(for: .connected))
+    }
+
+    @Test func doesNotOpenOnUnrelatedEvents() {
+        let frame = HandFrame(frameId: 0, timestamp: 0, hands: [], frameRate: 0)
+        #expect(!LeapController.shouldOpenDevice(for: .disconnected))
+        #expect(!LeapController.shouldOpenDevice(for: .deviceLost))
+        #expect(!LeapController.shouldOpenDevice(for: .trackingFrame(frame)))
+    }
+
+    // A lost device must release the handle so a later reconnect can open again.
+    @Test func closesOnDeviceLost() {
+        let frame = HandFrame(frameId: 0, timestamp: 0, hands: [], frameRate: 0)
+        #expect(LeapController.shouldCloseDevice(for: .deviceLost))
+        #expect(!LeapController.shouldCloseDevice(for: .connected))
+        #expect(!LeapController.shouldCloseDevice(for: .deviceFound(nil)))
+        #expect(!LeapController.shouldCloseDevice(for: .trackingFrame(frame)))
+    }
+}
+
 // MARK: - LeapError Tests
 
 @Suite("LeapError")

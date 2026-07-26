@@ -273,13 +273,41 @@ public actor LeapController {
         }
     }
 
+    // Whether an event should trigger an attempt to open a device.
+    //
+    // Both cases are needed. The service reports zero devices immediately after
+    // `connected` and only enumerates them by the time it emits its device event,
+    // so opening on `connected` alone always misses the device; opening on
+    // `deviceFound` alone would miss a device already present before we connected.
+    static func shouldOpenDevice(for event: LeapEvent) -> Bool {
+        switch event {
+        case .connected, .deviceFound: return true
+        case .disconnected, .deviceLost, .trackingFrame: return false
+        }
+    }
+
+    // Whether an event means the current device handle is no longer valid.
+    static func shouldCloseDevice(for event: LeapEvent) -> Bool {
+        if case .deviceLost = event { return true }
+        return false
+    }
+
     private func deliver(_ event: LeapEvent) {
         eventContinuation?.yield(event)
 
-        // When a device connects, open it to enable tracking.
-        if case .connected = event {
+        if Self.shouldCloseDevice(for: event) {
+            closeDevice()
+        }
+        if Self.shouldOpenDevice(for: event) {
             openFirstDevice()
         }
+    }
+
+    // Releases the device handle so a later `deviceFound` can open a fresh one.
+    private func closeDevice() {
+        guard let device = _device else { return }
+        LeapCloseDevice(device)
+        _device = nil
     }
 
     private func openFirstDevice() {
