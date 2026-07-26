@@ -32,10 +32,23 @@ public actor LeapController {
 
     /// An async stream of all events from the Ultraleap service.
     ///
-    /// Terminates when `stop()` is called or the controller is deallocated.
+    /// Terminates when ``stop()`` is called or the controller is deallocated.
+    ///
+    /// The stream is unicast: iterating it from two places splits the events
+    /// between them rather than delivering each event to both. Iterate once and
+    /// rebroadcast if you need multiple consumers.
     public nonisolated let events: AsyncStream<LeapEvent>
 
     /// A convenience stream of only tracking frames (hands data).
+    ///
+    /// Every event still produces an element; non-tracking events yield `nil`.
+    ///
+    /// ```swift
+    /// for await frame in controller.frames {
+    ///     guard let frame else { continue }
+    ///     render(frame)
+    /// }
+    /// ```
     public nonisolated var frames: AsyncMapSequence<AsyncStream<LeapEvent>, HandFrame?> {
         events.map { event -> HandFrame? in
             if case .trackingFrame(let frame) = event { return frame }
@@ -46,7 +59,15 @@ public actor LeapController {
     // MARK: - Initialisation
 
     /// Creates a controller and opens a connection to the Ultraleap service.
-    /// - Parameter trackingMode: The initial tracking mode. Defaults to `.desktop`.
+    ///
+    /// Polling starts immediately on a background task, and the requested
+    /// tracking mode is applied as soon as the service reports a connection.
+    ///
+    /// - Parameter trackingMode: The initial tracking mode. Defaults to
+    ///   ``TrackingMode/desktop``.
+    /// - Throws: ``LeapError/connectionFailed(_:)`` if the connection cannot be
+    ///   created or opened — typically because the Ultraleap Hand Tracking
+    ///   service is not running.
     public init(trackingMode: TrackingMode = .desktop) async throws {
         // Wire up the AsyncStream before any await so consumers can subscribe immediately.
         var cont: AsyncStream<LeapEvent>.Continuation!
@@ -109,6 +130,12 @@ public actor LeapController {
     // MARK: - Control
 
     /// Stops event delivery and closes the connection.
+    ///
+    /// Finishes ``events``, which ends any `for await` loop over it, then closes
+    /// the device and the service connection. Safe to call more than once.
+    /// `deinit` performs the same teardown, so calling this is only necessary to
+    /// end tracking before the controller is released. A stopped controller
+    /// cannot be reconnected — create a new one instead.
     public func stop() {
         pollingTask?.cancel()
         eventContinuation?.finish()
@@ -123,8 +150,14 @@ public actor LeapController {
         }
     }
 
-    /// Changes the tracking mode asynchronously. The result is delivered via
-    /// future events (LeapC applies it asynchronously).
+    /// Changes the tracking mode.
+    ///
+    /// The service applies the change asynchronously, so subsequent frames
+    /// reflect the new mode only after a short delay.
+    ///
+    /// - Parameter mode: The mode to switch to.
+    /// - Throws: ``LeapError/connectionFailed(_:)`` if the connection is closed
+    ///   or the service rejects the request.
     public func setTrackingMode(_ mode: TrackingMode) throws {
         guard let conn = _connection else {
             throw LeapError.connectionFailed(Int32(eLeapRS_NotConnected.rawValue))
@@ -136,6 +169,15 @@ public actor LeapController {
     }
 
     /// Enables or disables the background frames policy.
+    ///
+    /// With background frames enabled the service keeps delivering tracking data
+    /// while your app is not frontmost. The user can veto this policy in the
+    /// Ultraleap control panel.
+    ///
+    /// - Parameter enabled: `true` to request background frames, `false` to
+    ///   clear the policy.
+    /// - Throws: ``LeapError/connectionFailed(_:)`` if the connection is closed
+    ///   or the service rejects the request.
     public func setBackgroundFrames(enabled: Bool) throws {
         guard let conn = _connection else {
             throw LeapError.connectionFailed(Int32(eLeapRS_NotConnected.rawValue))
@@ -147,7 +189,12 @@ public actor LeapController {
         }
     }
 
-    /// Returns the current server and client version information.
+    /// Returns version information for one component of the tracking stack.
+    ///
+    /// - Parameter part: Which component to query.
+    /// - Returns: The component's major, minor, and patch version numbers.
+    /// - Throws: ``LeapError/connectionFailed(_:)`` if the connection is closed
+    ///   or the query fails.
     public func version(of part: VersionPart) throws -> (major: Int32, minor: Int32, patch: Int32) {
         guard let conn = _connection else {
             throw LeapError.connectionFailed(Int32(eLeapRS_NotConnected.rawValue))
@@ -253,6 +300,10 @@ public actor LeapController {
     // MARK: - Device Info
 
     /// Fetches information about the connected device, or `nil` if no device is open.
+    ///
+    /// The controller opens the first available device shortly after
+    /// ``LeapEvent/connected``, so this returns `nil` until that completes and
+    /// again after ``stop()``.
     public func deviceInfo() -> DeviceInfo? {
         guard let device = _device else { return nil }
 
@@ -274,10 +325,15 @@ public actor LeapController {
 
 // MARK: - VersionPart
 
+/// Which component's version to query with ``LeapController/version(of:)``.
 public enum VersionPart: Sendable {
+    /// The version of the LeapC client library linked into this process.
     case clientLibrary
+    /// The protocol version the client library speaks.
     case clientProtocol
+    /// The version of the Ultraleap tracking service.
     case serverLibrary
+    /// The protocol version the service speaks.
     case serverProtocol
 
     var cValue: eLeapVersionPart {

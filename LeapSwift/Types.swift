@@ -27,10 +27,19 @@ extension simd_quatf {
 // MARK: - Tracking Mode
 
 /// The tracking mode for the Leap Motion device.
+///
+/// The mode tells the service where the device is mounted and which way it is
+/// looking, which determines how the tracking origin is oriented. Set it when
+/// creating a ``LeapController`` or later with
+/// ``LeapController/setTrackingMode(_:)``.
 public enum TrackingMode: Equatable, Sendable {
+    /// The device rests on a flat surface, facing up. The default.
     case desktop
+    /// The device is mounted on a head-worn display, facing outward.
     case headMounted
+    /// The device is mounted above a screen, facing down toward the user.
     case screenTop
+    /// The service reported a mode this framework does not recognize.
     case unknown
 
     var cValue: eLeapTrackingMode {
@@ -56,7 +65,9 @@ public enum TrackingMode: Equatable, Sendable {
 
 /// Whether the hand is the left or right hand.
 public enum HandType: Equatable, Sendable {
+    /// The left hand.
     case left
+    /// The right hand.
     case right
 }
 
@@ -349,11 +360,19 @@ public struct HandFrame: Sendable {
 // MARK: - Device Info
 
 /// Information about a connected Ultraleap device.
+///
+/// Obtain this from ``LeapController/deviceInfo()`` once a device has been
+/// opened.
 public struct DeviceInfo: Sendable {
+    /// The device's unique hardware serial number.
     public let serialNumber: String
+    /// Horizontal field of view in radians.
     public let horizontalFOV: Float
+    /// Vertical field of view in radians.
     public let verticalFOV: Float
+    /// Maximum reliable tracking distance from the device, in micrometers.
     public let range: UInt32
+    /// Distance between the device's stereo cameras, in micrometers.
     public let baseline: UInt32
 
     init?(_ info: LEAP_DEVICE_INFO) {
@@ -368,11 +387,25 @@ public struct DeviceInfo: Sendable {
 
 // MARK: - LeapEvent
 
-/// Events emitted by LeapController.
+/// Events emitted by ``LeapController``.
+///
+/// Delivered in order on ``LeapController/events``. The stream finishes when
+/// ``LeapController/stop()`` is called or the controller is deallocated.
 public enum LeapEvent: Sendable {
+    /// A connection to the Ultraleap service was established.
+    ///
+    /// The controller opens the first available device in response to this
+    /// event, so ``LeapController/deviceInfo()`` may briefly still return `nil`.
     case connected
+    /// The connection to the Ultraleap service was lost.
     case disconnected
+    /// A device became available.
+    ///
+    /// The associated value is currently always `nil`; device details are
+    /// fetched on demand with ``LeapController/deviceInfo()``.
     case deviceFound(DeviceInfo?)
+    /// A previously available device is no longer connected.
     case deviceLost
+    /// A new snapshot of tracked hands is available.
     case trackingFrame(HandFrame)
 }

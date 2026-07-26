@@ -5,33 +5,13 @@
 //  Created by kmiyahara on 2026/07/26.
 //
 
-/// LeapSwift: A Swift framework for Ultraleap hand tracking.
+// The framework overview, coordinate system, and usage guides live in the DocC
+// catalog: LeapSwift.docc/LeapSwift.md and its articles.
+
+/// The semantic version of the LeapSwift framework.
 ///
-/// Import `LeapSwift` to start tracking hands with a clean async/await API:
-///
-/// ```swift
-/// import LeapSwift
-///
-/// let controller = try await LeapController()
-/// for await event in controller.events {
-///     switch event {
-///     case .connected:
-///         print("Connected to Ultraleap service")
-///     case .trackingFrame(let frame):
-///         if let left = frame.leftHand {
-///             print("Left palm: \(left.palm.position)")
-///         }
-///     default:
-///         break
-///     }
-/// }
-/// ```
-///
-/// ## Coordinate System
-/// All positions are in **millimeters** relative to the Ultraleap device center.
-/// - X: positive toward the user's right
-/// - Y: positive upward
-/// - Z: positive toward the user (toward the user when device faces up)
-/// The version of the LeapSwift framework.
+/// This is the version of the Swift wrapper, not of the underlying Ultraleap
+/// service. For the service and client library versions, call
+/// ``LeapController/version(of:)``.
 public let frameworkVersion = "1.0.0"
 
