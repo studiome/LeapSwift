@@ -53,6 +53,12 @@ Open `LeapSwift.xcodeproj` and build the `LeapSwift` scheme, or:
 xcodebuild -project LeapSwift.xcodeproj -scheme LeapSwift -destination 'platform=macOS'
 ```
 
+The package also builds with Swift Package Manager, against the same sources:
+
+```bash
+swift build
+```
+
 **This repository does not bundle `libLeapC`.** The Ultraleap library and headers
 are proprietary and cannot be redistributed here, so the project references them
 in place from your local Ultraleap installation:
@@ -72,10 +78,34 @@ self-contained at runtime.
 
 ## Using LeapSwift in an app
 
-There is no `Package.swift`, so Swift Package Manager is not supported. Either add
-`LeapSwift.xcodeproj` to your app project as a subproject, or build the framework
-and add the product directly. In both cases add `LeapSwift.framework` to your app
-target's *Frameworks, Libraries, and Embedded Content* with **Embed & Sign**.
+### Swift Package Manager
+
+Add the package by branch or by local path:
+
+```swift
+.package(url: "https://github.com/studiome/LeapSwift.git", branch: "main")
+.package(path: "../LeapSwift")
+```
+
+> Important: a **version** requirement (`from:`, `.upToNextMajor`, an exact tag)
+> does not work. SPM rejects it with *"contains unsafe build flags"*, because the
+> package must pass the SDK's library search path with `unsafeFlags` — the
+> Ultraleap SDK ships no pkg-config file, so there is no supported alternative.
+> Branch and path dependencies are unaffected.
+
+Set `LEAPSDK_PATH` if your SDK is not at the default location. Note that this only
+covers linking; the header path lives in `LeapSwift/LeapCBridge/module.modulemap`
+and has to be edited to match.
+
+An SPM-built binary links `@rpath/libLeapC.6.dylib` and finds it through a runpath
+into the installed SDK, so nothing is copied into your build.
+
+### Xcode framework
+
+Add `LeapSwift.xcodeproj` to your app project as a subproject, or build the
+framework and add the product directly. In both cases add `LeapSwift.framework` to
+your app target's *Frameworks, Libraries, and Embedded Content* with
+**Embed & Sign**.
 
 Your app needs no configuration for `libLeapC`. The framework carries its own copy
 in `LeapSwift.framework/Versions/A/Frameworks` and resolves it through its own
@@ -137,6 +167,7 @@ Omitting it is a warning in Swift 5 and an error in Swift 6.
 
 ```bash
 xcodebuild test -project LeapSwift.xcodeproj -scheme LeapSwift -destination 'platform=macOS'
+swift test
 ```
 
 The suite covers the value types and geometry helpers. It needs no device and no
