@@ -76,8 +76,10 @@ self-contained at runtime.
 xcodebuild test -project LeapSwift.xcodeproj -scheme LeapSwift -destination 'platform=macOS'
 ```
 
-The suite covers the value types and geometry helpers and needs no device or
-running tracking service, so it works in CI.
+The suite covers the value types and geometry helpers. It needs no device and no
+running tracking service, but the machine must still have Ultraleap Hand Tracking
+installed, because building the framework requires the `LeapC` headers and
+library. Hosted CI runners without that installation cannot build the project.
 
 ## Documentation
 
