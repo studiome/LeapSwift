@@ -70,6 +70,51 @@ header path in `LeapSwift/LeapCBridge/module.modulemap`, to match.
 the *Embed Libraries* build phase, so the framework you produce locally is
 self-contained at runtime.
 
+## Using LeapSwift in an app
+
+There is no `Package.swift`, so Swift Package Manager is not supported. Either add
+`LeapSwift.xcodeproj` to your app project as a subproject, or build the framework
+and add the product directly. In both cases add `LeapSwift.framework` to your app
+target's *Frameworks, Libraries, and Embedded Content* with **Embed & Sign**.
+
+Your app needs no configuration for `libLeapC`. The framework carries its own copy
+in `LeapSwift.framework/Versions/A/Frameworks` and resolves it through its own
+`@loader_path/Frameworks` runpath, so the app binary only ever links
+`LeapSwift.framework` itself.
+
+### App Sandbox
+
+A sandboxed app **must** declare the network client entitlement, because `LeapC`
+reaches the tracking service over a local socket:
+
+```xml
+<key>com.apple.security.app-sandbox</key><true/>
+<key>com.apple.security.network.client</key><true/>
+```
+
+Without `com.apple.security.network.client` the failure is silent and easy to
+misdiagnose: `LeapController()` still succeeds, but the connection is never
+established and no `connected` event ever arrives. No error is thrown.
+
+> Important: `LeapController()` returning does not mean you are connected — it
+> only means the connection was opened locally. Always treat the `connected`
+> event as the signal that the service is actually reachable.
+
+### Swift 6 language mode
+
+The framework is built with library evolution enabled, so its public enums are
+non-frozen. Code outside the framework must handle unknown cases:
+
+```swift
+switch event {
+case .trackingFrame(let frame): render(frame)
+// …
+@unknown default: break
+}
+```
+
+Omitting `@unknown default` is a warning in Swift 5 and an error in Swift 6.
+
 ## Tests
 
 ```bash
