@@ -70,6 +70,15 @@ header path in `LeapSwift/LeapCBridge/module.modulemap`, to match.
 the *Embed Libraries* build phase, so the framework you produce locally is
 self-contained at runtime.
 
+## Tests
+
+```bash
+xcodebuild test -project LeapSwift.xcodeproj -scheme LeapSwift -destination 'platform=macOS'
+```
+
+The suite covers the value types and geometry helpers and needs no device or
+running tracking service, so it works in CI.
+
 ## Documentation
 
 Build the DocC documentation in Xcode with **Product → Build Documentation**, or:
