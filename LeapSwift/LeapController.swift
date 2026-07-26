@@ -185,7 +185,7 @@ public actor LeapController {
         let flag = UInt64(eLeapPolicyFlag_BackgroundFrames.rawValue)
         let result = LeapSetPolicyFlags(conn, enabled ? flag : 0, enabled ? 0 : flag)
         guard result == eLeapRS_Success else {
-            throw LeapError(result)
+            throw LeapError.policyError(Int32(result.rawValue))
         }
     }
 
@@ -282,13 +282,23 @@ public actor LeapController {
     static func shouldOpenDevice(for event: LeapEvent) -> Bool {
         switch event {
         case .connected, .deviceFound: return true
-        case .disconnected, .deviceLost, .trackingFrame: return false
+        case .disconnected, .deviceLost, .trackingFrame, .error: return false
         }
     }
 
     // Whether an event means the current device handle is no longer valid.
     static func shouldCloseDevice(for event: LeapEvent) -> Bool {
         if case .deviceLost = event { return true }
+        return false
+    }
+
+    // Whether the event promises that a device is actually enumerable.
+    //
+    // `deviceFound` does, so finding none is a real failure worth reporting.
+    // After `connected` the service usually has not enumerated one yet, and the
+    // `deviceFound` that follows retries — reporting there would be noise.
+    static func expectsDeviceToBePresent(for event: LeapEvent) -> Bool {
+        if case .deviceFound = event { return true }
         return false
     }
 
@@ -299,7 +309,7 @@ public actor LeapController {
             closeDevice()
         }
         if Self.shouldOpenDevice(for: event) {
-            openFirstDevice()
+            openFirstDevice(reportIfMissing: Self.expectsDeviceToBePresent(for: event))
         }
     }
 
@@ -310,19 +320,32 @@ public actor LeapController {
         _device = nil
     }
 
-    private func openFirstDevice() {
+    private func openFirstDevice(reportIfMissing: Bool) {
         guard let conn = _connection, _device == nil else { return }
 
         var count: UInt32 = 0
         LeapGetDeviceList(conn, nil, &count)
-        guard count > 0 else { return }
+        guard count > 0 else {
+            if reportIfMissing { report(.deviceNotFound) }
+            return
+        }
 
         var refs = [LEAP_DEVICE_REF](repeating: LEAP_DEVICE_REF(), count: Int(count))
         LeapGetDeviceList(conn, &refs, &count)
 
         var dev: LEAP_DEVICE?
-        guard LeapOpenDevice(refs[0], &dev) == eLeapRS_Success, let device = dev else { return }
+        let result = LeapOpenDevice(refs[0], &dev)
+        guard result == eLeapRS_Success, let device = dev else {
+            report(.openDeviceFailed(Int32(result.rawValue)))
+            return
+        }
         self._device = device
+    }
+
+    // Yields an error directly rather than through `deliver`, so that reporting a
+    // failure cannot itself trigger another open attempt.
+    private func report(_ error: LeapError) {
+        eventContinuation?.yield(.error(error))
     }
 
     // MARK: - Device Info
@@ -354,6 +377,11 @@ public actor LeapController {
 // MARK: - VersionPart
 
 /// Which component's version to query with ``LeapController/version(of:)``.
+///
+/// Frozen: these are the four components the LeapC version API exposes, so the
+/// set will not grow. Callers can switch over it exhaustively without
+/// `@unknown default`.
+@frozen
 public enum VersionPart: Sendable {
     /// The version of the LeapC client library linked into this process.
     case clientLibrary

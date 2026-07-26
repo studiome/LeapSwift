@@ -100,20 +100,38 @@ established and no `connected` event ever arrives. No error is thrown.
 > only means the connection was opened locally. Always treat the `connected`
 > event as the signal that the service is actually reachable.
 
-### Swift 6 language mode
+### Handling failures
 
-The framework is built with library evolution enabled, so its public enums are
-non-frozen. Code outside the framework must handle unknown cases:
+Errors from calls you make are thrown. Failures that happen while the controller
+is processing an event have nowhere to be thrown to, so they arrive on the stream
+as `LeapEvent.error`:
 
 ```swift
-switch event {
-case .trackingFrame(let frame): render(frame)
-// …
-@unknown default: break
-}
+case .error(let error):
+    log("tracking problem: \(error.localizedDescription)")
 ```
 
-Omitting `@unknown default` is a warning in Swift 5 and an error in Swift 6.
+The controller keeps running after reporting one — it stays connected and retries
+opening a device on the next `connected` or `deviceFound`.
+
+### Swift 6 language mode
+
+The framework is built with library evolution, so a public enum is only
+exhaustively switchable from outside if it is `@frozen`:
+
+| Enum | Frozen | Needs `@unknown default` |
+| ---- | ------ | ------------------------ |
+| `HandType` | yes | no |
+| `VersionPart` | yes | no |
+| `LeapEvent` | no | **yes** |
+| `LeapError` | no | **yes** |
+| `TrackingMode` | no | **yes** |
+
+`HandType` and `VersionPart` describe closed sets, so they are frozen and switch
+exhaustively. The other three are expected to gain cases — `LeapEvent` and
+`LeapError` grow as more conditions are reported, and `TrackingMode` follows
+Ultraleap's modes — so they stay non-frozen and require `@unknown default`.
+Omitting it is a warning in Swift 5 and an error in Swift 6.
 
 ## Tests
 

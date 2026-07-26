@@ -44,10 +44,23 @@ let task = Task {
             status = "Device unplugged"
         case .trackingFrame(let frame):
             render(frame)
+        case .error(let error):
+            log(error.localizedDescription)
+        @unknown default:
+            break
         }
     }
 }
 ```
+
+> Note: ``LeapEvent`` is not `@frozen`, so a `switch` outside the framework needs
+> an `@unknown default`. ``HandType`` and ``VersionPart`` are frozen and switch
+> exhaustively without one.
+
+Failures raised while the controller is handling an event cannot be thrown to
+you, so they arrive as ``LeapEvent/error(_:)``. The controller keeps running: it
+stays connected and retries opening a device on the next ``LeapEvent/connected``
+or ``LeapEvent/deviceFound(_:)``.
 
 If you only care about hand data, ``LeapController/frames`` maps the stream to
 `HandFrame?`, emitting `nil` for non-tracking events:

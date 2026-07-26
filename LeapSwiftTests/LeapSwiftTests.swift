@@ -159,6 +159,23 @@ struct DeviceOpenPolicyTests {
         #expect(!LeapController.shouldOpenDevice(for: .trackingFrame(frame)))
     }
 
+    // Reporting a failure must not itself trigger another open attempt.
+    @Test func doesNotOpenOnError() {
+        #expect(!LeapController.shouldOpenDevice(for: .error(.deviceNotFound)))
+        #expect(!LeapController.shouldCloseDevice(for: .error(.deviceNotFound)))
+    }
+
+    // Missing devices are only a failure when the service said one appeared.
+    @Test func onlyDeviceFoundPromisesAnEnumerableDevice() {
+        let frame = HandFrame(frameId: 0, timestamp: 0, hands: [], frameRate: 0)
+        #expect(LeapController.expectsDeviceToBePresent(for: .deviceFound(nil)))
+        #expect(!LeapController.expectsDeviceToBePresent(for: .connected))
+        #expect(!LeapController.expectsDeviceToBePresent(for: .disconnected))
+        #expect(!LeapController.expectsDeviceToBePresent(for: .deviceLost))
+        #expect(!LeapController.expectsDeviceToBePresent(for: .trackingFrame(frame)))
+        #expect(!LeapController.expectsDeviceToBePresent(for: .error(.deviceNotFound)))
+    }
+
     // A lost device must release the handle so a later reconnect can open again.
     @Test func closesOnDeviceLost() {
         let frame = HandFrame(frameId: 0, timestamp: 0, hands: [], frameRate: 0)
@@ -166,6 +183,38 @@ struct DeviceOpenPolicyTests {
         #expect(!LeapController.shouldCloseDevice(for: .connected))
         #expect(!LeapController.shouldCloseDevice(for: .deviceFound(nil)))
         #expect(!LeapController.shouldCloseDevice(for: .trackingFrame(frame)))
+    }
+}
+
+// MARK: - Frozen Enum Tests
+
+@Suite("Frozen enums")
+struct FrozenEnumTests {
+
+    // HandType and VersionPart are @frozen, so an exhaustive switch compiles
+    // without `@unknown default` even from outside the framework. These switches
+    // fail to build if the attribute is ever removed.
+    @Test func handTypeSwitchesExhaustively() {
+        func name(_ t: HandType) -> String {
+            switch t {
+            case .left:  "left"
+            case .right: "right"
+            }
+        }
+        #expect(name(.left) == "left")
+        #expect(name(.right) == "right")
+    }
+
+    @Test func versionPartSwitchesExhaustively() {
+        func name(_ p: VersionPart) -> String {
+            switch p {
+            case .clientLibrary:  "clientLibrary"
+            case .clientProtocol: "clientProtocol"
+            case .serverLibrary:  "serverLibrary"
+            case .serverProtocol: "serverProtocol"
+            }
+        }
+        #expect(name(.serverLibrary) == "serverLibrary")
     }
 }
 
@@ -179,8 +228,7 @@ struct LeapErrorTests {
             .connectionFailed(0),
             .deviceNotFound,
             .openDeviceFailed(0),
-            .policyError(0),
-            .trackingUnavailable
+            .policyError(0)
         ]
         for error in errors {
             #expect(error.errorDescription?.isEmpty == false, "Description missing for \(error)")

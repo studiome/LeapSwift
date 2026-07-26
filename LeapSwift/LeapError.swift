@@ -15,8 +15,6 @@ public enum LeapError: Error, LocalizedError, Sendable {
     case openDeviceFailed(Int32)
     /// A policy flag change, such as background frames, was rejected.
     case policyError(Int32)
-    /// The service is connected but not producing tracking data.
-    case trackingUnavailable
 
     public var errorDescription: String? {
         switch self {
@@ -28,8 +26,6 @@ public enum LeapError: Error, LocalizedError, Sendable {
             return "Failed to open device (code: 0x\(String(UInt32(bitPattern: code), radix: 16)))"
         case .policyError(let code):
             return "Policy error (code: 0x\(String(UInt32(bitPattern: code), radix: 16)))"
-        case .trackingUnavailable:
-            return "Hand tracking is unavailable"
         }
     }
 

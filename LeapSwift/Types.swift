@@ -64,6 +64,10 @@ public enum TrackingMode: Equatable, Sendable {
 // MARK: - Hand Type
 
 /// Whether the hand is the left or right hand.
+///
+/// Frozen: a hand is left or right, so this set will never grow. Callers can
+/// switch over it exhaustively without `@unknown default`.
+@frozen
 public enum HandType: Equatable, Sendable {
     /// The left hand.
     case left
@@ -367,10 +371,15 @@ public struct DeviceInfo: Sendable {
     /// The device's unique hardware serial number.
     public let serialNumber: String
     /// Horizontal field of view in radians.
+    ///
+    /// - Note: Not every device reports this. A Leap Motion Controller 2 returns
+    ///   `0` here, for ``verticalFOV``, and for ``range``, while still reporting
+    ///   ``serialNumber`` and ``baseline``. This mirrors what LeapC returns.
     public let horizontalFOV: Float
-    /// Vertical field of view in radians.
+    /// Vertical field of view in radians. May be `0`; see ``horizontalFOV``.
     public let verticalFOV: Float
     /// Maximum reliable tracking distance from the device, in micrometers.
+    /// May be `0`; see ``horizontalFOV``.
     public let range: UInt32
     /// Distance between the device's stereo cameras, in micrometers.
     public let baseline: UInt32
@@ -408,4 +417,10 @@ public enum LeapEvent: Sendable {
     case deviceLost
     /// A new snapshot of tracked hands is available.
     case trackingFrame(HandFrame)
+    /// A recoverable failure occurred that could not be surfaced by `throw`,
+    /// because it happened while handling an event rather than in a call you made.
+    ///
+    /// The controller keeps running: it stays connected and will retry opening a
+    /// device on the next `connected` or `deviceFound` event.
+    case error(LeapError)
 }
