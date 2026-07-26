@@ -1,0 +1,4 @@
+module LeapC {
+    header "/Applications/Ultraleap Hand Tracking.app/Contents/LeapSDK/include/LeapC.h"
+export *
+}
