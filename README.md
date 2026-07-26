@@ -44,7 +44,7 @@ for await event in controller.events {
 Clone the repository and build the framework:
 
 ```bash
-git clone https://github.com/<your-account>/LeapSwift.git
+git clone https://github.com/studiome/LeapSwift.git
 ```
 
 Open `LeapSwift.xcodeproj` and build the `LeapSwift` scheme, or:
