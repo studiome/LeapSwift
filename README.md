@@ -163,6 +163,65 @@ exhaustively. The other three are expected to gain cases — `LeapEvent` and
 Ultraleap's modes — so they stay non-frozen and require `@unknown default`.
 Omitting it is a warning in Swift 5 and an error in Swift 6.
 
+## Mock mode
+
+Hand tracking normally requires the Ultraleap service and a physical device.
+LeapSwift can also stream synthetic hand data instead, so you can build and
+demo UI and gesture logic without either:
+
+```swift
+let controller = try await LeapController(mock: .always)
+for await event in controller.events {
+    // Exactly the same events a real device would send.
+}
+```
+
+**Mocking is opt-in and off by default.** `LeapController()` with no `mock`
+argument talks to real LeapC exactly as it always has — a release build can
+never start streaming fake frames unless something explicitly asks for it.
+`mock` defaults to `MockPolicy.resolved()`, which checks, in order:
+
+1. The `-LeapSwiftMock` launch argument (handy from an Xcode scheme).
+2. The `LEAPSWIFT_MOCK` environment variable.
+3. `MockPolicy.disabled`, if neither is set or recognized.
+
+Both accept the same values: `off`/`disabled`/`0`, `auto`/`whenNoDevice`, and
+`always`/`on`/`1`. Or pass a `MockPolicy` directly:
+
+| Policy | Behavior |
+| ------ | -------- |
+| `.disabled` | Real LeapC only. The default. |
+| `.always` | Mock only. LeapC is never touched. |
+| `.whenNoDevice` | Tries the real device; falls back to the mock if the connection fails, no device is found, or a device stops producing frames. Switches back automatically if a real device starts working. |
+
+`mockScenario` picks what the mock streams: `.noHands`, `.idleRightHand`,
+`.bothHandsIdle`, `.openClose`, `.pinch`, or `.wave`. All of `LeapController`'s
+API works the same while mocked — `deviceInfo()` returns a pseudo device,
+`version(of:)` returns a placeholder version, and `setTrackingMode`/
+`setBackgroundFrames` succeed without doing anything, rather than throwing as
+they would with no real connection.
+
+For lower-level control, `MockLeapServer` and `MockHandFactory` are public —
+useful for driving a preview or a test directly, without going through
+`LeapController` at all:
+
+```swift
+let server = MockLeapServer(scenario: .pinch)
+await server.start()
+for await event in server.events { ... }
+```
+
+`MockRecording` reads and writes the same data as a JSON file, so you can
+replay a captured or hand-authored session:
+
+```swift
+let recording = try MockRecording.bundled(.wave)   // ships with LeapSwift
+await server.play(recording, loop: true)
+```
+
+The *Mock Mode* article in the DocC catalog has the full picture, including how
+to record and load your own sessions.
+
 ## Tests
 
 ```bash

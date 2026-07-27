@@ -186,6 +186,24 @@ struct DeviceOpenPolicyTests {
     }
 }
 
+// MARK: - Device Info Tests
+
+@Suite("DeviceInfo")
+struct DeviceInfoTests {
+
+    // The public initializer exists so mocks and tests can construct device
+    // info directly; the only other way to get one is the failable init from
+    // a live LEAP_DEVICE_INFO, which needs a real device.
+    @Test func memberwiseInitializerStoresAllFields() {
+        let info = DeviceInfo(serialNumber: "LM-000000", horizontalFOV: 2.3, verticalFOV: 2.0, range: 600_000, baseline: 40_000)
+        #expect(info.serialNumber == "LM-000000")
+        #expect(info.horizontalFOV == 2.3)
+        #expect(info.verticalFOV == 2.0)
+        #expect(info.range == 600_000)
+        #expect(info.baseline == 40_000)
+    }
+}
+
 // MARK: - Frozen Enum Tests
 
 @Suite("Frozen enums")

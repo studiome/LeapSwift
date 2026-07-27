@@ -10,7 +10,7 @@ consuming ``LeapController/events`` delivers everything that loop observes.
 
 ### Create a Controller
 
-``LeapController/init(trackingMode:)`` is `async throws`. It throws a
+``LeapController/init(trackingMode:mock:mockScenario:)`` is `async throws`. It throws a
 ``LeapError`` if the connection to the service cannot be created or opened —
 most often because the Ultraleap Hand Tracking service is not running.
 
@@ -131,8 +131,24 @@ await controller.stop()
 Calling ``LeapController/stop()`` more than once is safe. After stopping, the
 controller cannot be reconnected; create a new one instead.
 
+### Starting Without a Device
+
+Everything above needs the Ultraleap service and a physical device. If you
+don't have either handy — or want deterministic data for a demo or a test —
+pass `mock: .always` and get the exact same event stream from synthetic hand
+data instead:
+
+```swift
+let controller = try await LeapController(mock: .always, mockScenario: .pinch)
+```
+
+No other code changes: ``LeapController/events``, ``LeapController/frames``,
+and every other API work exactly the same either way. See <doc:MockMode> for
+the full picture, including scenarios and recorded sessions.
+
 ## See Also
 
 - ``LeapController``
 - ``LeapEvent``
 - <doc:HandModel>
+- <doc:MockMode>

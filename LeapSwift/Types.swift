@@ -68,7 +68,7 @@ public enum TrackingMode: Equatable, Sendable {
 /// Frozen: a hand is left or right, so this set will never grow. Callers can
 /// switch over it exhaustively without `@unknown default`.
 @frozen
-public enum HandType: Equatable, Sendable {
+public enum HandType: Equatable, Sendable, Codable {
     /// The left hand.
     case left
     /// The right hand.
@@ -78,7 +78,7 @@ public enum HandType: Equatable, Sendable {
 // MARK: - Bone
 
 /// A single bone segment with position and orientation.
-public struct Bone: Equatable, Sendable {
+public struct Bone: Equatable, Sendable, Codable {
     /// The joint closer to the wrist (proximal end).
     public let previousJoint: Vector3
     /// The joint closer to the fingertip (distal end).
@@ -115,7 +115,7 @@ public struct Bone: Equatable, Sendable {
 // MARK: - Finger
 
 /// A tracked finger with its four bones.
-public struct Finger: Equatable, Sendable {
+public struct Finger: Equatable, Sendable, Codable {
     public let id: Int32
     /// The metacarpal bone (zero-length for the thumb in the Ultraleap model).
     public let metacarpal: Bone
@@ -168,7 +168,7 @@ public struct Finger: Equatable, Sendable {
 // MARK: - Palm
 
 /// Data about the palm of the hand.
-public struct Palm: Equatable, Sendable {
+public struct Palm: Equatable, Sendable, Codable {
     /// Center of the palm in millimeters from the device origin.
     public let position: Vector3
     /// Time-filtered, stabilized palm position (suitable for 2D UI interaction).
@@ -219,7 +219,7 @@ public struct Palm: Equatable, Sendable {
 // MARK: - Hand
 
 /// A fully tracked hand with all fingers, palm, and arm data.
-public struct Hand: Sendable {
+public struct Hand: Sendable, Codable {
     /// Unique identifier for this hand across frames (stable while the hand is tracked).
     public let id: UInt32
     /// Whether this is the left or right hand.
@@ -321,7 +321,7 @@ public struct Hand: Sendable {
 // MARK: - HandFrame
 
 /// A snapshot of all tracked hands at a single point in time.
-public struct HandFrame: Sendable {
+public struct HandFrame: Sendable, Codable {
     /// The unique frame identifier.
     public let frameId: Int64
     /// The timestamp in microseconds (relative to LeapGetNow()).
@@ -383,6 +383,15 @@ public struct DeviceInfo: Sendable {
     public let range: UInt32
     /// Distance between the device's stereo cameras, in micrometers.
     public let baseline: UInt32
+
+    /// Designated public initializer — also used for testing and mocking.
+    public init(serialNumber: String, horizontalFOV: Float, verticalFOV: Float, range: UInt32, baseline: UInt32) {
+        self.serialNumber = serialNumber
+        self.horizontalFOV = horizontalFOV
+        self.verticalFOV = verticalFOV
+        self.range = range
+        self.baseline = baseline
+    }
 
     init?(_ info: LEAP_DEVICE_INFO) {
         guard let serial = info.serial.map({ String(cString: $0) }) else { return nil }

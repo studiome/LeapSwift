@@ -24,6 +24,9 @@ let package = Package(
             dependencies: ["LeapC"],
             path: "LeapSwift",
             exclude: ["LeapCBridge"],
+            resources: [
+                .process("MockData")
+            ],
             swiftSettings: [
                 .swiftLanguageMode(.v5)
             ],

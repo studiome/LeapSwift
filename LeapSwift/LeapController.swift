@@ -28,6 +28,25 @@ public actor LeapController {
     private var pollingTask: Task<Void, Never>?
     private var eventContinuation: AsyncStream<LeapEvent>.Continuation?
 
+    // MARK: - Private Mock State
+
+    private var _mockServer: MockLeapServer?
+    private var mockPumpTask: Task<Void, Never>?
+    // The policy and scenario this controller was created with, kept around
+    // so a `.whenNoDevice` fallback triggered later — by the timeout in
+    // `scheduleMockFallbackTimer`, or by an error event in `deliver(_:)` — can
+    // start the mock with the same scenario the caller originally asked for.
+    private var mockPolicy: MockPolicy = .disabled
+    private var mockScenario: MockScenario = .idleRightHand
+    // What `setTrackingMode(_:)` stores while mocked, since there is no real
+    // connection to apply it to.
+    private var mockTrackingMode: TrackingMode = .desktop
+    // Set the moment any *real* tracking frame arrives. Both the fallback
+    // timer and `deliver(_:)`'s per-event fallback check this so a device
+    // that starts producing frames just slowly doesn't get preempted by the
+    // mock.
+    private var hasReceivedRealFrame = false
+
     // MARK: - Public API
 
     /// An async stream of all events from the Ultraleap service.
@@ -63,16 +82,37 @@ public actor LeapController {
     /// Polling starts immediately on a background task, and the requested
     /// tracking mode is applied as soon as the service reports a connection.
     ///
-    /// - Parameter trackingMode: The initial tracking mode. Defaults to
-    ///   ``TrackingMode/desktop``.
+    /// - Parameters:
+    ///   - trackingMode: The initial tracking mode. Defaults to ``TrackingMode/desktop``.
+    ///   - mock: Whether to substitute synthetic hand data for a real device.
+    ///     Defaults to ``MockPolicy/resolved(environment:arguments:default:)``,
+    ///     which is ``MockPolicy/disabled`` unless `LEAPSWIFT_MOCK` or
+    ///     `-LeapSwiftMock` says otherwise — so a plain `LeapController()`
+    ///     call behaves exactly as it did before mocking existed, and no
+    ///     release build streams fake frames without the caller explicitly
+    ///     asking for ``MockPolicy/always``.
+    ///   - mockScenario: Which canned scenario the mock streams, when active.
+    ///     Ignored if `mock` is ``MockPolicy/disabled``.
     /// - Throws: ``LeapError/connectionFailed(_:)`` if the connection cannot be
-    ///   created or opened — typically because the Ultraleap Hand Tracking
-    ///   service is not running.
-    public init(trackingMode: TrackingMode = .desktop) async throws {
+    ///   created or opened and `mock` is not ``MockPolicy/whenNoDevice`` —
+    ///   typically because the Ultraleap Hand Tracking service is not running.
+    public init(
+        trackingMode: TrackingMode = .desktop,
+        mock: MockPolicy = .resolved(),
+        mockScenario: MockScenario = .idleRightHand
+    ) async throws {
         // Wire up the AsyncStream before any await so consumers can subscribe immediately.
         var cont: AsyncStream<LeapEvent>.Continuation!
         self.events = AsyncStream { cont = $0 }
         self.eventContinuation = cont
+        self.mockPolicy = mock
+        self.mockScenario = mockScenario
+        self.mockTrackingMode = trackingMode
+
+        if MockActivation.shouldStartImmediately(policy: mock) {
+            startMock(scenario: mockScenario, forwardConnectionEvents: true)
+            return
+        }
 
         // Set up custom allocator so LeapC can allocate image/mapping buffers.
         // These are non-capturing C function pointers (legal in Swift).
@@ -93,6 +133,10 @@ public actor LeapController {
         var conn: LEAP_CONNECTION?
         let createResult = LeapCreateConnection(&config, &conn)
         guard createResult == eLeapRS_Success, let connection = conn else {
+            if MockActivation.shouldFallBackOnConnectionFailure(policy: mock) {
+                startMock(scenario: mockScenario, forwardConnectionEvents: true)
+                return
+            }
             cont.finish()
             throw LeapError(createResult)
         }
@@ -107,16 +151,25 @@ public actor LeapController {
         guard openResult == eLeapRS_Success else {
             LeapDestroyConnection(connection)
             self._connection = nil
+            if MockActivation.shouldFallBackOnConnectionFailure(policy: mock) {
+                startMock(scenario: mockScenario, forwardConnectionEvents: true)
+                return
+            }
             cont.finish()
             throw LeapError(openResult)
         }
 
         // Start the polling loop on a high-priority background task.
         startPolling(connection: connection, mode: trackingMode)
+
+        if MockActivation.shouldFallBackOnConnectionFailure(policy: mock) {
+            scheduleMockFallbackTimer(scenario: mockScenario)
+        }
     }
 
     deinit {
         pollingTask?.cancel()
+        mockPumpTask?.cancel()
         eventContinuation?.finish()
         if let device = _device {
             LeapCloseDevice(device)
@@ -138,6 +191,7 @@ public actor LeapController {
     /// cannot be reconnected — create a new one instead.
     public func stop() {
         pollingTask?.cancel()
+        stopMockIfActive()
         eventContinuation?.finish()
         if let device = _device {
             LeapCloseDevice(device)
@@ -158,7 +212,14 @@ public actor LeapController {
     /// - Parameter mode: The mode to switch to.
     /// - Throws: ``LeapError/connectionFailed(_:)`` if the connection is closed
     ///   or the service rejects the request.
+    ///
+    /// While mocked, this only records `mode` — there is no real service to
+    /// apply it, and no mode-dependent behavior in the synthetic frames.
     public func setTrackingMode(_ mode: TrackingMode) throws {
+        guard _mockServer == nil else {
+            mockTrackingMode = mode
+            return
+        }
         guard let conn = _connection else {
             throw LeapError.connectionFailed(Int32(eLeapRS_NotConnected.rawValue))
         }
@@ -178,7 +239,11 @@ public actor LeapController {
     ///   clear the policy.
     /// - Throws: ``LeapError/connectionFailed(_:)`` if the connection is closed
     ///   or the service rejects the request.
+    ///
+    /// While mocked, this always succeeds — there is no app-focus concept for
+    /// synthetic frames, so there is nothing for the setting to change.
     public func setBackgroundFrames(enabled: Bool) throws {
+        guard _mockServer == nil else { return }
         guard let conn = _connection else {
             throw LeapError.connectionFailed(Int32(eLeapRS_NotConnected.rawValue))
         }
@@ -195,7 +260,14 @@ public actor LeapController {
     /// - Returns: The component's major, minor, and patch version numbers.
     /// - Throws: ``LeapError/connectionFailed(_:)`` if the connection is closed
     ///   or the query fails.
+    ///
+    /// While mocked, this returns a fixed, obviously-synthetic version rather
+    /// than throwing, since callers of `version(of:)` typically use it for
+    /// display or logging rather than branching on the result.
     public func version(of part: VersionPart) throws -> (major: Int32, minor: Int32, patch: Int32) {
+        guard _mockServer == nil else {
+            return (major: 0, minor: 0, patch: 0)
+        }
         guard let conn = _connection else {
             throw LeapError.connectionFailed(Int32(eLeapRS_NotConnected.rawValue))
         }
@@ -305,12 +377,99 @@ public actor LeapController {
     private func deliver(_ event: LeapEvent) {
         eventContinuation?.yield(event)
 
+        if case .trackingFrame = event {
+            hasReceivedRealFrame = true
+        }
+        if MockActivation.shouldStopMock(event: event) {
+            // A real frame arrived while the mock was filling in — hand
+            // control back to the device it was standing in for.
+            stopMockIfActive()
+        }
+        if MockActivation.shouldFallBackToMock(policy: mockPolicy, event: event) {
+            // `.connected` always precedes any event this can fire for (it's
+            // what makes `openFirstDevice` run in the first place), so the
+            // mock's own `.connected`/`.deviceFound` would be a confusing
+            // duplicate here — only its frames are relayed.
+            startMock(scenario: mockScenario, forwardConnectionEvents: false)
+        }
+
         if Self.shouldCloseDevice(for: event) {
             closeDevice()
         }
         if Self.shouldOpenDevice(for: event) {
             openFirstDevice(reportIfMissing: Self.expectsDeviceToBePresent(for: event))
         }
+    }
+
+    // MARK: - Mock Wiring
+
+    // Starts `MockLeapServer` and relays its events onto this controller's
+    // own `events` stream via a pump task, so consumers see no difference
+    // between mocked and real delivery.
+    //
+    // `forwardConnectionEvents` distinguishes two situations that call this:
+    // a cold start (`.always`, or `.whenNoDevice` when even creating/opening
+    // the real connection failed) has announced nothing yet, so the mock's
+    // own `.connected`/`.deviceFound` are the only announcement there will
+    // be. A warm fallback (`.whenNoDevice` after a real `.connected` already
+    // fired) only wants the mock's frames — its connection lifecycle events
+    // would be duplicates.
+    private func startMock(scenario: MockScenario, forwardConnectionEvents: Bool) {
+        guard _mockServer == nil else { return }
+        let server = MockLeapServer(scenario: scenario)
+        _mockServer = server
+        mockPumpTask = Task { [weak self] in
+            for await event in server.events {
+                if !forwardConnectionEvents, Self.isConnectionLifecycleEvent(event) {
+                    continue
+                }
+                guard let self else { break }
+                await self.relayMockEvent(event)
+            }
+        }
+        Task { await server.start() }
+    }
+
+    // Stops the mock server, if one is running, and lets its own pump task
+    // wind down once `server.stop()` finishes its stream. Safe to call when
+    // no mock is active.
+    private func stopMockIfActive() {
+        guard let server = _mockServer else { return }
+        _mockServer = nil
+        let pump = mockPumpTask
+        mockPumpTask = nil
+        Task {
+            await server.stop()
+            pump?.cancel()
+        }
+    }
+
+    private func relayMockEvent(_ event: LeapEvent) {
+        eventContinuation?.yield(event)
+    }
+
+    private static func isConnectionLifecycleEvent(_ event: LeapEvent) -> Bool {
+        switch event {
+        case .connected, .deviceFound: return true
+        case .disconnected, .deviceLost, .trackingFrame, .error: return false
+        }
+    }
+
+    // `.whenNoDevice` only: if no real tracking frame has arrived within
+    // `timeout` of a successful connection, falls back to the mock even
+    // though no explicit error ever came through — covers a device that is
+    // simply slow to start producing frames, or a `deviceFound` that never
+    // arrives at all.
+    private func scheduleMockFallbackTimer(scenario: MockScenario, timeout: Duration = .seconds(2)) {
+        Task { [weak self] in
+            try? await Task.sleep(for: timeout)
+            await self?.fallBackToMockIfStillNoRealFrame(scenario: scenario)
+        }
+    }
+
+    private func fallBackToMockIfStillNoRealFrame(scenario: MockScenario) {
+        guard !hasReceivedRealFrame, _mockServer == nil else { return }
+        startMock(scenario: scenario, forwardConnectionEvents: false)
     }
 
     // Releases the device handle so a later `deviceFound` can open a fresh one.
@@ -355,7 +514,13 @@ public actor LeapController {
     /// The controller opens the first available device shortly after
     /// ``LeapEvent/connected``, so this returns `nil` until that completes and
     /// again after ``stop()``.
-    public func deviceInfo() -> DeviceInfo? {
+    ///
+    /// While mocked, this returns a pseudo device rather than `nil`, since a
+    /// mock always has a "device" from the moment it starts.
+    public func deviceInfo() async -> DeviceInfo? {
+        if let server = _mockServer {
+            return await server.deviceInfo()
+        }
         guard let device = _device else { return nil }
 
         var info = LEAP_DEVICE_INFO()

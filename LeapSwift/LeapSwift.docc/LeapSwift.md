@@ -108,6 +108,15 @@ for await event in controller.events {
 - ``LeapController/version(of:)``
 - ``frameworkVersion``
 
+### Mocking
+
+- <doc:MockMode>
+- ``MockPolicy``
+- ``MockScenario``
+- ``MockLeapServer``
+- ``MockHandFactory``
+- ``MockRecording``
+
 ### Geometry
 
 - ``Vector3``
