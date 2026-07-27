@@ -30,14 +30,22 @@ for await event in controller.events {
 
 ## Requirements
 
-- macOS 13.0 or later, on Apple Silicon
+- macOS 13.0 or later
 - Xcode 16.0 or later to build
-- **Ultraleap Hand Tracking** installed at
-  `/Applications/Ultraleap Hand Tracking.app`
-  ([download](https://developer.leapmotion.com/get-started/)), with the tracking
-  service running
-- An Ultraleap device: Leap Motion Controller, Leap Motion Controller 2, or
-  Stereo IR 170
+- **Ultraleap Hyperion version 6.0 or later** — Ultraleap's v6 hand tracking
+  software, v6.2.0 at the time of writing — installed at
+  `/Applications/Ultraleap Hand Tracking.app`, with the tracking service
+  running. Intel and Apple Silicon builds are both provided;
+  [download](https://www.ultraleap.com/downloads/leap-motion-controller-2/)
+- A **Leap Motion Controller 2**, the device Hyperion supports
+
+> Important: version 6 is a hard requirement, not a recommendation. LeapSwift
+> links `libLeapC.6.dylib` — the v6 series of the LeapC library. The previous
+> release, **Ultraleap Gemini** (v5), ships `libLeapC.5.dylib` under a different
+> install name, so the build will not link against it. Ultraleap also states
+> that Hyperion needs a Leap Motion Controller 2 and does not support the
+> original Leap Motion Controller, for which Gemini v5 remains the current
+> software.
 
 ## Installation
 

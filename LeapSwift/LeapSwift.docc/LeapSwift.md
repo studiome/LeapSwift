@@ -38,10 +38,13 @@ stays valid indefinitely and can be passed freely between tasks and actors.
 LeapSwift links against `libLeapC` from the Ultraleap Hand Tracking
 installation and requires the tracking service to be running:
 
-- macOS 13.0 or later, on Apple Silicon
-- **Ultraleap Hand Tracking** installed at
-  `/Applications/Ultraleap Hand Tracking.app`
-- A connected Ultraleap device (Leap Motion Controller, Controller 2, or Stereo IR 170)
+- macOS 13.0 or later
+- **Ultraleap Hyperion version 6.0 or later** — Ultraleap's v6 hand tracking
+  software — installed at `/Applications/Ultraleap Hand Tracking.app`
+- A connected **Leap Motion Controller 2**
+
+Version 6 is a hard requirement: LeapSwift links `libLeapC.6.dylib`, and the
+previous release, Ultraleap Gemini (v5), ships `libLeapC.5.dylib` instead.
 
 ### Coordinate System
 
