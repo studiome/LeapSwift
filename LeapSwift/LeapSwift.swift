@@ -13,5 +13,5 @@
 /// This is the version of the Swift wrapper, not of the underlying Ultraleap
 /// service. For the service and client library versions, call
 /// ``LeapController/version(of:)``.
-public let frameworkVersion = "0.1.2"
+public let frameworkVersion = "0.1.3"
 
