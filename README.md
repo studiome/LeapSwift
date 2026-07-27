@@ -265,13 +265,17 @@ To build it yourself, use **Product → Build Documentation** in Xcode, or:
 xcodebuild docbuild -project LeapSwift.xcodeproj -scheme LeapSwift -destination 'platform=macOS'
 ```
 
-The published site is generated from that archive and committed to the
-`gh-pages` branch:
+To republish the site after changing the documentation, run:
 
 ```bash
-xcrun docc process-archive transform-for-static-hosting LeapSwift.doccarchive \
-  --output-path <dir> --hosting-base-path LeapSwift
+Scripts/publish-docs.sh
 ```
+
+It builds the catalog, transforms the archive for static hosting, and commits
+the result to the `gh-pages` branch, using a temporary worktree so your checkout
+and current branch are left alone. Pass `--dry-run` to build and inspect the
+site without publishing. It has to run locally, because building the framework
+needs the Ultraleap SDK.
 
 ## Coordinate System
 
