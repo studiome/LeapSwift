@@ -30,6 +30,10 @@ public enum LeapError: Error, LocalizedError, Sendable {
     }
 
     init(_ rs: eLeapRS) {
-        self = .connectionFailed(Int32(rs.rawValue))
+        // eLeapRS values such as eLeapRS_NotConnected (0xE2010005) exceed
+        // Int32.max, so Int32(_:) would trap on overflow. bitPattern:
+        // preserves the raw bits, which is all callers need — they only
+        // ever re-render the code in hex via errorDescription.
+        self = .connectionFailed(Int32(bitPattern: rs.rawValue))
     }
 }

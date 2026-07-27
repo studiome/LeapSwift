@@ -221,7 +221,7 @@ public actor LeapController {
             return
         }
         guard let conn = _connection else {
-            throw LeapError.connectionFailed(Int32(eLeapRS_NotConnected.rawValue))
+            throw LeapError.connectionFailed(Int32(bitPattern: eLeapRS_NotConnected.rawValue))
         }
         let result = LeapSetTrackingMode(conn, mode.cValue)
         guard result == eLeapRS_Success else {
@@ -245,12 +245,12 @@ public actor LeapController {
     public func setBackgroundFrames(enabled: Bool) throws {
         guard _mockServer == nil else { return }
         guard let conn = _connection else {
-            throw LeapError.connectionFailed(Int32(eLeapRS_NotConnected.rawValue))
+            throw LeapError.connectionFailed(Int32(bitPattern: eLeapRS_NotConnected.rawValue))
         }
         let flag = UInt64(eLeapPolicyFlag_BackgroundFrames.rawValue)
         let result = LeapSetPolicyFlags(conn, enabled ? flag : 0, enabled ? 0 : flag)
         guard result == eLeapRS_Success else {
-            throw LeapError.policyError(Int32(result.rawValue))
+            throw LeapError.policyError(Int32(bitPattern: result.rawValue))
         }
     }
 
@@ -269,7 +269,7 @@ public actor LeapController {
             return (major: 0, minor: 0, patch: 0)
         }
         guard let conn = _connection else {
-            throw LeapError.connectionFailed(Int32(eLeapRS_NotConnected.rawValue))
+            throw LeapError.connectionFailed(Int32(bitPattern: eLeapRS_NotConnected.rawValue))
         }
         var v = LEAP_VERSION()
         let result = LeapGetVersion(conn, part.cValue, &v)
@@ -321,7 +321,9 @@ public actor LeapController {
     // Converts a raw C message to a Swift LeapEvent.
     // IMPORTANT: Must be called synchronously within the polling loop,
     // before the next LeapPollConnection call, to safely dereference pointers.
-    private static func convertMessage(_ msg: LEAP_CONNECTION_MESSAGE) -> LeapEvent? {
+    // Internal rather than private so tests can exercise it directly, same as
+    // `shouldOpenDevice(for:)` below.
+    static func convertMessage(_ msg: LEAP_CONNECTION_MESSAGE) -> LeapEvent? {
         switch msg.type {
         case eLeapEventType_Connection:
             return .connected
@@ -495,7 +497,7 @@ public actor LeapController {
         var dev: LEAP_DEVICE?
         let result = LeapOpenDevice(refs[0], &dev)
         guard result == eLeapRS_Success, let device = dev else {
-            report(.openDeviceFailed(Int32(result.rawValue)))
+            report(.openDeviceFailed(Int32(bitPattern: result.rawValue)))
             return
         }
         self._device = device

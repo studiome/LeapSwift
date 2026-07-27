@@ -5,6 +5,7 @@
 
 import Testing
 import simd
+import LeapC
 @testable import LeapSwift
 
 // MARK: - Bone Tests
@@ -257,6 +258,19 @@ struct LeapErrorTests {
         let error = LeapError.deviceNotFound
         #expect(error.errorDescription?.contains("device") == true ||
                 error.errorDescription?.contains("Device") == true)
+    }
+
+    // eLeapRS_NotConnected (0xE2010005) exceeds Int32.max, so the raw enum's
+    // bit pattern must be preserved with Int32(bitPattern:) rather than
+    // truncated with Int32(_:), which traps on overflow.
+    @Test func initFromNotConnectedPreservesBitPattern() {
+        let error = LeapError(eLeapRS_NotConnected)
+        guard case .connectionFailed(let code) = error else {
+            Issue.record("Expected .connectionFailed, got \(error)")
+            return
+        }
+        #expect(code == Int32(bitPattern: eLeapRS_NotConnected.rawValue))
+        #expect(error.errorDescription?.contains("e2010005") == true)
     }
 }
 
