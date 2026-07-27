@@ -254,14 +254,24 @@ library. Hosted CI runners without that installation cannot build the project.
 
 ## Documentation
 
-Build the DocC documentation in Xcode with **Product → Build Documentation**, or:
+**[studiome.github.io/LeapSwift](https://studiome.github.io/LeapSwift/)** hosts
+the rendered DocC documentation. It covers a *Getting Started* guide, an article
+on the hand model (the frame → hand → finger → bone hierarchy), a *Mock Mode*
+article, and the full API reference.
+
+To build it yourself, use **Product → Build Documentation** in Xcode, or:
 
 ```bash
 xcodebuild docbuild -project LeapSwift.xcodeproj -scheme LeapSwift -destination 'platform=macOS'
 ```
 
-The catalog includes a *Getting Started* guide and an article on the hand model
-(the frame → hand → finger → bone hierarchy), alongside the full API reference.
+The published site is generated from that archive and committed to the
+`gh-pages` branch:
+
+```bash
+xcrun docc process-archive transform-for-static-hosting LeapSwift.doccarchive \
+  --output-path <dir> --hosting-base-path LeapSwift
+```
 
 ## Coordinate System
 
