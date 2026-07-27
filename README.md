@@ -30,8 +30,8 @@ for await event in controller.events {
 
 ## Requirements
 
-- macOS 26.0 or later
-- Xcode 26 or later
+- macOS 13.0 or later, on Apple Silicon
+- Xcode 16.0 or later to build
 - **Ultraleap Hand Tracking** installed at
   `/Applications/Ultraleap Hand Tracking.app`
   ([download](https://developer.leapmotion.com/get-started/)), with the tracking

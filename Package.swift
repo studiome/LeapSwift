@@ -9,7 +9,7 @@ let leapSDK = Context.environment["LEAPSDK_PATH"]
 
 let package = Package(
     name: "LeapSwift",
-    platforms: [.macOS("26.0")],
+    platforms: [.macOS(.v13)],
     products: [
         .library(name: "LeapSwift", targets: ["LeapSwift"])
     ],
