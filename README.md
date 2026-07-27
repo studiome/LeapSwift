@@ -270,7 +270,8 @@ the user's right, Y positive upward, and Z positive toward the user.
 
 ## Licence
 
-LeapSwift is available under the MIT licence. See [LICENSE](LICENSE).
+LeapSwift is available under the MIT licence. See [LICENSE](LICENSE), and
+[NOTICE](NOTICE) for what that licence does and does not cover.
 
 The MIT licence covers **only the Swift source code in this repository**. It does
 not cover the Ultraleap Tracking SDK, the Ultraleap Hand Tracking Software, or

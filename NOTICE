@@ -1,0 +1,20 @@
+NOTE ON SCOPE
+
+The MIT licence in LICENSE applies only to the LeapSwift source code in this
+repository. It does not apply to, and this repository does not redistribute,
+the Ultraleap Tracking SDK, the Ultraleap Hand Tracking Software, or the
+`libLeapC` library. Those are proprietary works of Ultraleap Limited, licensed
+separately under the Ultraleap Enterprise Licence, which is included with your
+Ultraleap installation at:
+
+    /Applications/Ultraleap Hand Tracking.app/Contents/LeapSDK/LICENSE.md
+
+By installing and using the Ultraleap SDK you accept that agreement directly
+with Ultraleap. LeapSwift grants you no rights to it, and using LeapSwift does
+not change your obligations under it.
+
+See the Licence section of README.md for the points worth being aware of.
+
+Hand tracking technology by Ultraleap. Ultraleap, Leap Motion, and related
+marks are trademarks of Ultraleap Limited. This project is not affiliated with
+or endorsed by Ultraleap.

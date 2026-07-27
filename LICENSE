@@ -19,13 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
----
-
-NOTE ON SCOPE
-
-The MIT licence above applies only to the LeapSwift source code in this
-repository. It does not apply to, and this repository does not redistribute,
-the Ultraleap Tracking SDK, the Ultraleap Hand Tracking Software, or the
-`libLeapC` library. Those are proprietary works of Ultraleap Limited, licensed
-separately under the Ultraleap Enterprise Licence. See README.md for details.
