@@ -80,10 +80,11 @@ self-contained at runtime.
 
 ### Swift Package Manager
 
-Add the package by branch or by local path:
+Add the package by branch, by commit, or by local path:
 
 ```swift
 .package(url: "https://github.com/studiome/LeapSwift.git", branch: "main")
+.package(url: "https://github.com/studiome/LeapSwift.git", revision: "<commit>")
 .package(path: "../LeapSwift")
 ```
 
@@ -91,7 +92,16 @@ Add the package by branch or by local path:
 > does not work. SPM rejects it with *"contains unsafe build flags"*, because the
 > package must pass the SDK's library search path with `unsafeFlags` — the
 > Ultraleap SDK ships no pkg-config file, so there is no supported alternative.
-> Branch and path dependencies are unaffected.
+> Branch, revision, and path dependencies are unaffected.
+
+Releases are tagged all the same, so there is a stable commit to pin to. In
+Xcode's *Add Package Dependency* sheet the **Version** rules will fail for the
+reason above — choose **Branch** (`main`) or **Commit**, pasting the commit a
+release tag points at:
+
+```bash
+git ls-remote https://github.com/studiome/LeapSwift.git refs/tags/0.1.0
+```
 
 Set `LEAPSDK_PATH` if your SDK is not at the default location. Note that this only
 covers linking; the header path lives in `LeapSwift/LeapCBridge/module.modulemap`
