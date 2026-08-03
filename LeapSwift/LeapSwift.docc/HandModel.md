@@ -70,15 +70,14 @@ physical simulation.
 
 #### Orientation Angles
 
-``Palm`` exposes three Euler angles in radians that describe the hand's
-orientation relative to the tracking origin. The same values are available
-directly on ``Hand`` as convenience properties.
+``Hand`` exposes three Euler angles in radians that describe the hand's
+orientation relative to the tracking origin.
 
 | Property | Axis | Meaning |
 |----------|------|---------|
-| ``Palm/roll`` | Z (forward) | Rotation of the palm around the wrist. `0` = palm down, `+π/2` = thumb up. |
-| ``Palm/pitch`` | X (side) | Tilt of the fingers up or down. `0` = fingers forward, `+π/2` = fingers up. |
-| ``Palm/yaw`` | Y (vertical) | Left/right rotation of the hand. `0` = fingers forward, `+π/2` = fingers right. |
+| ``Hand/roll`` | Z (forward) | Rotation of the palm around the wrist. `0` = palm down, `+π/2` = thumb up. |
+| ``Hand/pitch`` | X (side) | Tilt of the fingers up or down. `0` = fingers forward, `+π/2` = fingers up. |
+| ``Hand/yaw`` | Y (vertical) | Left/right rotation of the hand. `0` = fingers forward, `+π/2` = fingers right. |
 
 ```swift
 // Show orientation angles for the right hand
@@ -89,12 +88,15 @@ if let hand = frame.rightHand {
 }
 ```
 
-> Note: These angles are computed from ``Palm/normal`` (roll) and
-> ``Palm/direction`` (pitch and yaw), following the same convention as
-> [leap.js](https://github.com/ultraleap/leap.js). They are Euler angles, not
-> quaternion components, so they can exhibit gimbal lock near extreme poses. Use
-> ``Palm/orientation`` (a quaternion) when you need a singularity-free
-> representation.
+> Note: The angles live on ``Palm`` — they are computed from ``Palm/normal``
+> (roll) and ``Palm/direction`` (pitch and yaw) — and ``Hand`` forwards them so
+> that code ported from [leap.js](https://github.com/ultraleap/leap.js) keeps
+> working. ``Palm/roll``, ``Palm/pitch``, and ``Palm/yaw`` return the same
+> values and are the ones to use when you hold a ``Palm`` on its own.
+>
+> They are Euler angles, not quaternion components, so they can exhibit gimbal
+> lock near extreme poses. Use ``Palm/orientation`` (a quaternion) when you need
+> a singularity-free representation.
 
 ### Fingers and Bones
 
