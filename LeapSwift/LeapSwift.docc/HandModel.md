@@ -15,7 +15,7 @@ HandFrame
     ├── id, type, confidence, visibleTime
     ├── pinchStrength, pinchDistance
     ├── grabStrength, grabAngle
-    ├── palm: Palm                   // position, normal, direction, orientation
+    ├── palm: Palm                   // position, normal, direction, orientation, roll, pitch, yaw
     ├── arm: Bone                    // forearm
     └── thumb, index, middle, ring, pinky: Finger
         ├── id, isExtended
@@ -67,6 +67,34 @@ let facingUp = simd_dot(hand.palm.normal, SIMD3<Float>(0, 1, 0)) > 0.8
 time-filtered variant that trades a little latency for much less jitter. Prefer
 the stabilized position for cursors and UI hit-testing, and the raw position for
 physical simulation.
+
+#### Orientation Angles
+
+``Palm`` exposes three Euler angles in radians that describe the hand's
+orientation relative to the tracking origin. The same values are available
+directly on ``Hand`` as convenience properties.
+
+| Property | Axis | Meaning |
+|----------|------|---------|
+| ``Palm/roll`` | Z (forward) | Rotation of the palm around the wrist. `0` = palm down, `+π/2` = thumb up. |
+| ``Palm/pitch`` | X (side) | Tilt of the fingers up or down. `0` = fingers forward, `+π/2` = fingers up. |
+| ``Palm/yaw`` | Y (vertical) | Left/right rotation of the hand. `0` = fingers forward, `+π/2` = fingers right. |
+
+```swift
+// Show orientation angles for the right hand
+if let hand = frame.rightHand {
+    let roll  = hand.roll   // radians; positive = thumb tilts upward
+    let pitch = hand.pitch  // radians; positive = fingers tilt upward
+    let yaw   = hand.yaw    // radians; positive = hand turns right
+}
+```
+
+> Note: These angles are computed from ``Palm/normal`` (roll) and
+> ``Palm/direction`` (pitch and yaw), following the same convention as
+> [leap.js](https://github.com/ultraleap/leap.js). They are Euler angles, not
+> quaternion components, so they can exhibit gimbal lock near extreme poses. Use
+> ``Palm/orientation`` (a quaternion) when you need a singularity-free
+> representation.
 
 ### Fingers and Bones
 
