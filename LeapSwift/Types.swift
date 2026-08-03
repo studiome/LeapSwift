@@ -184,6 +184,30 @@ public struct Palm: Equatable, Sendable, Codable {
     /// Estimated palm width in millimeters when the hand is flat.
     public let width: Float
 
+    /// Roll angle of the hand in radians.
+    ///
+    /// Rotation around the forward (z) axis. A value of 0 means the palm faces
+    /// downward; positive values rotate the thumb upward (counterclockwise when
+    /// viewed from the front).
+    ///
+    /// Equivalent to `Hand.roll()` in leap.js.
+    public var roll: Float { atan2(normal.x, -normal.y) }
+
+    /// Pitch angle of the hand in radians.
+    ///
+    /// Rotation around the side (x) axis. Positive values tilt the fingers upward.
+    ///
+    /// Equivalent to `Hand.pitch()` in leap.js.
+    public var pitch: Float { atan2(direction.y, -direction.z) }
+
+    /// Yaw angle of the hand in radians.
+    ///
+    /// Rotation around the vertical (y) axis. Positive values rotate the hand
+    /// to the right.
+    ///
+    /// Equivalent to `Hand.yaw()` in leap.js.
+    public var yaw: Float { atan2(direction.x, -direction.z) }
+
     /// Designated public initializer — also used for testing and mocking.
     public init(
         position: Vector3,
@@ -255,6 +279,13 @@ public struct Hand: Sendable, Codable {
 
     /// All five fingers in order: thumb, index, middle, ring, pinky.
     public var fingers: [Finger] { [thumb, index, middle, ring, pinky] }
+
+    /// Roll angle of the hand in radians. See ``Palm/roll``.
+    public var roll: Float { palm.roll }
+    /// Pitch angle of the hand in radians. See ``Palm/pitch``.
+    public var pitch: Float { palm.pitch }
+    /// Yaw angle of the hand in radians. See ``Palm/yaw``.
+    public var yaw: Float { palm.yaw }
 
     /// Designated public initializer — also used for testing and mocking.
     public init(

@@ -306,3 +306,91 @@ struct HandTypeTests {
         #expect(HandType.left != HandType.right)
     }
 }
+
+// MARK: - Palm Orientation Tests
+
+@Suite("Palm orientation (roll / pitch / yaw)")
+struct PalmOrientationTests {
+
+    private static let eps: Float = 1e-5
+
+    private func makePalm(normal: Vector3 = .zero, direction: Vector3 = .zero) -> Palm {
+        Palm(position: .zero, stabilizedPosition: .zero, velocity: .zero,
+             normal: normal, direction: direction, orientation: .identity, width: 0)
+    }
+
+    // MARK: Roll — atan2(normal.x, -normal.y)
+
+    @Test func rollIsZeroWhenPalmFacesDown() {
+        // normal = (0, -1, 0) → atan2(0, 1) = 0
+        let palm = makePalm(normal: .init(0, -1, 0))
+        #expect(abs(palm.roll) < Self.eps)
+    }
+
+    @Test func rollIsHalfPiWhenPalmFacesRight() {
+        // normal = (1, 0, 0) → atan2(1, 0) = π/2
+        let palm = makePalm(normal: .init(1, 0, 0))
+        #expect(abs(palm.roll - .pi / 2) < Self.eps)
+    }
+
+    @Test func rollIsNegativeHalfPiWhenPalmFacesLeft() {
+        // normal = (-1, 0, 0) → atan2(-1, 0) = -π/2
+        let palm = makePalm(normal: .init(-1, 0, 0))
+        #expect(abs(palm.roll + .pi / 2) < Self.eps)
+    }
+
+    // MARK: Pitch — atan2(direction.y, -direction.z)
+
+    @Test func pitchIsZeroWhenPointingForward() {
+        // direction = (0, 0, -1) → atan2(0, 1) = 0
+        let palm = makePalm(direction: .init(0, 0, -1))
+        #expect(abs(palm.pitch) < Self.eps)
+    }
+
+    @Test func pitchIsHalfPiWhenPointingUp() {
+        // direction = (0, 1, 0) → atan2(1, 0) = π/2
+        let palm = makePalm(direction: .init(0, 1, 0))
+        #expect(abs(palm.pitch - .pi / 2) < Self.eps)
+    }
+
+    @Test func pitchIsNegativeHalfPiWhenPointingDown() {
+        // direction = (0, -1, 0) → atan2(-1, 0) = -π/2
+        let palm = makePalm(direction: .init(0, -1, 0))
+        #expect(abs(palm.pitch + .pi / 2) < Self.eps)
+    }
+
+    // MARK: Yaw — atan2(direction.x, -direction.z)
+
+    @Test func yawIsZeroWhenPointingForward() {
+        // direction = (0, 0, -1) → atan2(0, 1) = 0
+        let palm = makePalm(direction: .init(0, 0, -1))
+        #expect(abs(palm.yaw) < Self.eps)
+    }
+
+    @Test func yawIsHalfPiWhenPointingRight() {
+        // direction = (1, 0, 0) → atan2(1, 0) = π/2
+        let palm = makePalm(direction: .init(1, 0, 0))
+        #expect(abs(palm.yaw - .pi / 2) < Self.eps)
+    }
+
+    @Test func yawIsNegativeHalfPiWhenPointingLeft() {
+        // direction = (-1, 0, 0) → atan2(-1, 0) = -π/2
+        let palm = makePalm(direction: .init(-1, 0, 0))
+        #expect(abs(palm.yaw + .pi / 2) < Self.eps)
+    }
+
+    // MARK: Hand convenience properties delegate to palm
+
+    @Test func handRollPitchYawDelegateToPalm() {
+        let bone = Bone(previousJoint: .zero, nextJoint: .zero, width: 0, rotation: .identity)
+        let finger = Finger(id: 0, metacarpal: bone, proximal: bone, intermediate: bone, distal: bone, isExtended: false)
+        let palm = makePalm(normal: .init(0.5, -0.5, 0), direction: .init(0.5, 0.5, -1))
+        let hand = Hand(id: 1, type: .right, confidence: 1, visibleTime: 0,
+                        pinchDistance: 0, grabAngle: 0, pinchStrength: 0, grabStrength: 0,
+                        palm: palm, thumb: finger, index: finger, middle: finger,
+                        ring: finger, pinky: finger, arm: bone, isPinching: false)
+        #expect(hand.roll == palm.roll)
+        #expect(hand.pitch == palm.pitch)
+        #expect(hand.yaw == palm.yaw)
+    }
+}
